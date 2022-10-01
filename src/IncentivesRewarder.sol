@@ -297,6 +297,8 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     }
 
     function pendingTokens(uint256 _pid, address _user, uint256) public view returns (IERC20[] memory rewardTokens, uint256[] memory rewardAmounts) {
+        //todo: need to implement this
+        
         IERC20[] memory _rewardTokens = new IERC20[](1);
         _rewardTokens[0] = IERC20(MASTERCHEF_V2);
         uint256[] memory _rewardAmounts = new uint256[](1);
