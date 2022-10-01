@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import "../IncentivesRewarder.sol";
 import "./mock/Token.sol";
+import "./mock/MasterChef.sol";
 
 interface Vm {
     function prank(address) external;
@@ -15,7 +16,6 @@ interface Vm {
 contract TestSetup is DSTestPlus {
     Vm vm = Vm(HEVM_ADDRESS);
 
-    address MASTERCHEF = 0xEF0881eC094552b2e128Cf945EF17a6752B4Ec5d;
     address userA = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address userB = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
     address zeroAddress = 0x0000000000000000000000000000000000000000;
@@ -25,12 +25,14 @@ contract TestSetup is DSTestPlus {
     uint32 testIncentiveDuration = 2592000;
     uint112 testIncentiveAmount = 1e21;
 
-    IncentivesRewarder incentivesRewarder = new IncentivesRewarder(userA, userA, MASTERCHEF);
-
+    Token sushiToken = new Token();
+    Token stakedToken = new Token();
     Token tokenA = new Token();
     Token tokenB = new Token();
     Token tokenC = new Token();
 
+    MasterChef masterChef = new MasterChef(sushiToken);
+    IncentivesRewarder incentivesRewarder = new IncentivesRewarder(userA, userA, address(masterChef));
 
     bytes4 noToken = bytes4(keccak256("NoToken()"));
     bytes4 invalidInput = bytes4(keccak256("InvalidInput()"));
@@ -39,22 +41,29 @@ contract TestSetup is DSTestPlus {
     bytes overflow = abi.encodePacked(panic, bytes32(uint256(0x11)));
 
     function setUp() public {
+        sushiToken.mint(MAX_UINT256);
+        stakedToken.mint(MAX_UINT256);
         tokenA.mint(MAX_UINT256);
-        tokenB.mint(MAX_UINT256);
-        tokenC.mint(MAX_UINT256);
 
         tokenA.approve(address(incentivesRewarder), MAX_UINT256);
-        tokenB.approve(address(incentivesRewarder), MAX_UINT256);
-        tokenC.approve(address(incentivesRewarder), MAX_UINT256);
 
         tokenA.transfer(userA, MAX_UINT112);
-        tokenA.transfer(userB, MAX_UINT112);
+        //tokenA.transfer(userB, MAX_UINT112);
+        stakedToken.transfer(address(userB), 100);
+        sushiToken.transfer(address(masterChef), MAX_UINT112);
 
         vm.prank(userA);
         tokenA.approve(address(incentivesRewarder), MAX_UINT256);
 
         vm.prank(userB);
-        tokenA.approve(address(incentivesRewarder), MAX_UINT256);
+        stakedToken.approve(address(masterChef), MAX_UINT256);
+
+        // MasterChef Setup
+        masterChef.add(10, stakedToken, address(incentivesRewarder));
+
+        uint112 amount = testIncentiveAmount;
+        uint256 currentTime = block.timestamp;
+        uint256 duration = testIncentiveDuration;
 
     }
 

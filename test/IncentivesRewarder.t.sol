@@ -15,6 +15,36 @@ contract IncentivesTest is TestSetup {
         _updateIncentive(id, 10, 2593000, 2594000);
     }
 
+    function testIniitialIntegration() public {
+        
+        //vm.prank(userB);
+        //masterChef.deposit(0, 1, userB);
+        
+        uint32 duration = 2592000;
+        uint256 ongoingIncentive = _createIncentive(0, address(tokenA), 100, uint32(block.timestamp), uint32(block.timestamp + duration));
+        
+        vm.prank(userA);
+        incentivesRewarder.subscribeToIncentive(0, ongoingIncentive);
+
+        //vm.warp(block.timestamp + 10);
+
+        //incentivesRewarder.activateIncentive(ongoingIncentive, userB);
+
+        vm.warp(block.timestamp + 10);
+
+        vm.prank(userB);
+        masterChef.deposit(0, 1, userB);
+        
+        vm.warp(block.timestamp + duration);
+        
+        vm.prank(userB);
+        masterChef.harvest(0, userB);
+        uint256 balanceB = Token(tokenA).balanceOf(address(userB));
+        
+        //console.log(balanceB);
+        assertEq(balanceB, 100);
+    }
+
     function testCreateIncentive(
         uint256 pid,
         uint112 amount,

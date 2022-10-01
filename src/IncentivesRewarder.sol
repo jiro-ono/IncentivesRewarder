@@ -73,6 +73,10 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     // think this rewardPerLiquidityLast[user][icentiveId]
     // after operator subscribes to incentives, any action from user stakes will trigger an entry
     // for them and incentive id to track their rewards for each individual incentive
+
+    //todo: maybe instead of activateIncentive, we save a lastRewardTime for user's on each pid
+    //      if new incentive is hit during onSushiReward and lastRewardTime is not 0 on the user or
+    //      user has a staked balance then we _claimRewards for user??
     
     /// @dev rewardPerLiquidityLast[user][incentiveId]
     /// @dev Semantic overload: if value is zero user isn't subscribed to the incentive.
@@ -90,6 +94,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     error NoToken();
     error BatchError(bytes innerError);
     error OnlyCreator();
+    error AlreadyActivated();
 
     event IncentiveCreated(uint256 indexed pid, address indexed rewardToken, address indexed creator, uint256 id, uint256 amount, uint256 startTime, uint256 endTime);
     event IncentiveUpdated(uint256 indexed id, int256 changeAmount, uint256 newStartTime, uint256 newEndTime);
@@ -175,7 +180,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
 
     //function subscribeToIncentives() external onlyOwner {}
 
-    function subsribeToIncentive(uint256 pid, uint256 incentiveId) external nonReentrant onlyOwner {
+    function subscribeToIncentive(uint256 pid, uint256 incentiveId) external nonReentrant onlyOwner {
         if (incentiveId > incentiveCount || incentiveId <= 0) revert InvalidInput();
         //todo: if already subscribed erorr message
 
@@ -233,6 +238,15 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
 
     }
 
+    function activateIncentive(uint256 incentiveId, address user) public nonReentrant {
+        //todo: make sure we double check/test the and that userStakes is correct in action
+        uint256 userRewardPerLiquidityLast = rewardPerLiquidityLast[user][incentiveId];
+        if (userRewardPerLiquidityLast != 0) revert AlreadyActivated();
+
+        Incentive storage incentive = incentives[incentiveId];
+        rewardPerLiquidityLast[user][incentiveId] = incentive.rewardPerLiquidity;
+    }
+
     function _claimReward(Incentive storage incentive, uint256 incentiveId, address user, uint256 usersLiquidity) internal {
         uint256 reward;
         uint256 userRewardPerLiquidityLast = rewardPerLiquidityLast[user][incentiveId];
@@ -265,7 +279,6 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         for (uint256 i = 0; i < n; i = _increment(i)) {
             Incentive storage incentive = incentives[pool.subscribedIncentiveIds[i]]; // may need to conver this to uint256
             _accrueRewards(incentive);
-            // rewardPerLiquidityLast[msg.sender][incentiveId] = incentive.rewardPerLiquidity;
             _claimReward(incentive, pool.subscribedIncentiveIds[i], _user, userStake);
         }
 
