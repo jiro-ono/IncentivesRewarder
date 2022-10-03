@@ -17,8 +17,8 @@ contract IncentivesTest is TestSetup {
 
     function testIniitialIntegration() public {
         
-        //vm.prank(userB);
-        //masterChef.deposit(0, 1, userB);
+        vm.prank(userB);
+        masterChef.deposit(0, 1, userB);
         
         uint32 duration = 2592000;
         uint256 ongoingIncentive = _createIncentive(0, address(tokenA), 100, uint32(block.timestamp), uint32(block.timestamp + duration));
@@ -26,14 +26,17 @@ contract IncentivesTest is TestSetup {
         vm.prank(userA);
         incentivesRewarder.subscribeToIncentive(0, ongoingIncentive);
 
+        vm.prank(userB);
+        incentivesRewarder.activateIncentive(1, userB);
+
         //vm.warp(block.timestamp + 10);
 
         //incentivesRewarder.activateIncentive(ongoingIncentive, userB);
 
         vm.warp(block.timestamp + 10);
 
-        vm.prank(userB);
-        masterChef.deposit(0, 1, userB);
+        //vm.prank(userB);
+        //masterChef.deposit(0, 1, userB);
         
         vm.warp(block.timestamp + duration);
         

@@ -63,6 +63,11 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         uint24[] subscribedIncentiveIds;
     }
 
+    struct UserInfo {
+        uint256 liquidity;
+        uint64 lastRewardTime;
+    }
+
     address public immutable MASTERCHEF_V2;
     uint256 public incentiveCount;
     
