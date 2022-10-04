@@ -2,6 +2,8 @@
 pragma solidity 0.8.15;
 
 
+import {console} from "forge-std/console.sol";
+
 import "lib/solmate/src/utils/SafeTransferLib.sol";
 import "lib/solmate/src/utils/ReentrancyGuard.sol";
 import "./libraries/Auth.sol";
@@ -97,12 +99,15 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     error InvalidTimeFrame();
     error IncentiveOverflow();
     error NoToken();
+    error InvalidIndex();
     error BatchError(bytes innerError);
     error OnlyCreator();
     error AlreadyActivated();
 
     event IncentiveCreated(uint256 indexed pid, address indexed rewardToken, address indexed creator, uint256 id, uint256 amount, uint256 startTime, uint256 endTime);
     event IncentiveUpdated(uint256 indexed id, int256 changeAmount, uint256 newStartTime, uint256 newEndTime);
+
+    event TestEvent(uint256 data);
     
     constructor(
         address owner,
@@ -183,8 +188,6 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         emit IncentiveUpdated(incentiveId, changeAmount, incentive.lastRewardTime, incentive.endTime);
     }
 
-    //function subscribeToIncentives() external onlyOwner {}
-
     function subscribeToIncentive(uint256 pid, uint256 incentiveId) external nonReentrant onlyOwner {
         if (incentiveId > incentiveCount || incentiveId <= 0) revert InvalidInput();
         //todo: if already subscribed erorr message
@@ -199,15 +202,17 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
 
     }
 
-    //function unsubscribeFromIncentives() external nonReentrant onlyOwner {}
+    function unsubsribeFromIncentive(uint256 pid, uint256 incentiveIndex) external nonReentrant onlyOwner {
+        PoolInfo storage pool = poolInfo[pid];
+        // updatePool needed?
+        if (incentiveIndex >= pool.subscribedIncentiveIds.length) revert InvalidIndex();
 
-    function unsubsribeFromIncentive() external nonReentrant onlyOwner {}
+        for (uint256 i = incentiveIndex; i < pool.subscribedIncentiveIds.length - 1; _increment(i)) {
+            pool.subscribedIncentiveIds[i] = pool.subscribedIncentiveIds[i+1];
+        }
 
-    /*function accrueRewards(uint2456 incentiveId) external nonReentrant {
-        // do we want a updatePool here if anyone can call it??
-        if (incentiveId > incentiveCount || incentiveId <= 0) revert InvalidInput();
-        _accrueRewards(incentives[incentiveId]);
-    }*/
+        pool.subscribedIncentiveIds.pop();
+    }
 
     function _accrueRewards(Incentive storage incentive) internal {
         // accrue will generally be the same setup
@@ -237,12 +242,6 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         }
     }
 
-    function claimRewards() external nonReentrant {
-        // do we wanna allow users to claim rewards seperately from onSushi hook
-        // I wanna say no at first but could work with accrue? though liquidty for the pool might be accurate unless we do an updatePool?
-
-    }
-
     function activateIncentive(uint256 incentiveId, address user) public nonReentrant {
         //todo: make sure we double check/test the and that userStakes is correct in action
         uint256 userRewardPerLiquidityLast = rewardPerLiquidityLast[user][incentiveId];
@@ -253,30 +252,27 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     }
 
     function _claimReward(Incentive storage incentive, uint256 incentiveId, address user, uint256 usersLiquidity) internal {
-        uint256 reward;
-        uint256 userRewardPerLiquidityLast = rewardPerLiquidityLast[user][incentiveId];
-        
-        if (userRewardPerLiquidityLast == 0) reward = 0;
-        else {
-            uint256 rewardPerLiquidityDelta;
-            unchecked { rewardPerLiquidityDelta = incentive.rewardPerLiquidity - userRewardPerLiquidityLast; }
-            reward = FullMath.mulDiv(rewardPerLiquidityDelta, usersLiquidity, type(uint112).max);
-        }
-
+        uint256 reward = _calculateReward(incentive, incentiveId, user, usersLiquidity);
         rewardPerLiquidityLast[user][incentiveId] = incentive.rewardPerLiquidity;
+        
         ERC20(incentive.rewardToken).safeTransfer(user, reward);
-
-        // emit claim event
+        
+        // emit event
     }
 
-    //function _calculateReward(Incentive storage incentive, uint256 incentiveId, uint256 usersLiquidity)
+    function _calculateReward(Incentive storage incentive, uint256 incentiveId, address user, uint256 usersLiquidity) internal view returns (uint256 reward) {
+        uint256 userRewardPerLiquidtyLast = rewardPerLiquidityLast[user][incentiveId];
+        if (userRewardPerLiquidtyLast == 0) return 0;
+        
+        uint256 rewardPerLiquidityDelta;
+        unchecked { rewardPerLiquidityDelta = incentive.rewardPerLiquidity - userRewardPerLiquidtyLast; }
 
-    function calculateReward() internal view returns (uint256 reward) {}
+        reward = FullMath.mulDiv(rewardPerLiquidityDelta, usersLiquidity, type(uint112).max);
+    }
+
 
     function onSushiReward(uint256 pid, address _user, address to, uint256, uint256 lpTokenAmount) onlyMCV2 nonReentrant override external {
-        // grab poolInfo to get subscribedIncentiveIds
         //require(IMasterChefV2(MASTERCHEF_V2).lpToken(pid) == masterLpToken);
-        // updatePool?
         PoolInfo memory pool = _updatePool(pid);
         uint256 userStake = userStakes[pid][_user];
 
@@ -290,26 +286,45 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         userStakes[pid][_user] = lpTokenAmount;
 
         // emit event
-
-        // loop through that array and grab each incentives
-            // call accrue per incentiveId
-            // calculate rewards similar to accrue and updatePool or use claimReward
-            // safeTransfer them to user
-        
-        //update UserStakes
-        //update rewardPerLiquidityLast
-
     }
 
     function pendingTokens(uint256 _pid, address _user, uint256) public view returns (IERC20[] memory rewardTokens, uint256[] memory rewardAmounts) {
-        //todo: need to implement this
-        
-        IERC20[] memory _rewardTokens = new IERC20[](1);
-        _rewardTokens[0] = IERC20(MASTERCHEF_V2);
-        uint256[] memory _rewardAmounts = new uint256[](1);
-        _rewardAmounts[0] = 100;
+         IERC20[] memory _rewardTokens = new IERC20[](1);
+         uint256[] memory _rewardAmounts = new uint256[](1);
+
+        PoolInfo memory pool = poolInfo[_pid];
+        uint256 userStake = userStakes[_pid][_user];
+
+        uint256 n = pool.subscribedIncentiveIds.length;
+        for (uint256 i = 0; i < n; i = _increment(i)) {
+            uint256 incentiveId = pool.subscribedIncentiveIds[i];
+            Incentive storage incentive = incentives[incentiveId]; // may need to conver to uint256??
+            _rewardAmounts[i] = _pendingToken(incentive, incentiveId, _user, userStake);
+            _rewardTokens[i] = IERC20(incentive.rewardToken);
+        }
+
         return (_rewardTokens, _rewardAmounts);
     }
+
+    function _pendingToken(Incentive storage incentive, uint256 incentiveId, address user, uint256 usersLiquidity) internal view returns (uint256 reward) {
+        uint256 rewardPer = incentive.rewardPerLiquidity;
+        uint256 lpSupply = IMasterChefV2(MASTERCHEF_V2).lpToken(incentive.pid).balanceOf(MASTERCHEF_V2);
+        
+        if (block.timestamp > incentive.lastRewardTime && lpSupply != 0) {
+            uint256 maxTime = block.timestamp < incentive.endTime ? block.timestamp : incentive.endTime;
+            uint256 passedTime = maxTime - incentive.lastRewardTime;
+            uint256 totalTime = incentive.endTime - incentive.lastRewardTime;
+            uint256 reward = uint256(incentive.rewardRemaining) * passedTime / totalTime;
+            rewardPer += reward * type(uint112).max / lpSupply;
+        }
+
+        uint256 userRewardPerLiquidtyLast = rewardPerLiquidityLast[user][incentiveId];
+        uint256 rewardPerLiquidityDelta;
+        unchecked { rewardPerLiquidityDelta = rewardPer - userRewardPerLiquidtyLast; }
+
+        reward = FullMath.mulDiv(rewardPerLiquidityDelta, usersLiquidity, type(uint112).max);
+    }
+
 
     function _updatePool(uint256 pid) internal returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
@@ -319,35 +334,12 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
 
 
     function _saferTransferFrom(address token, uint256 amount) internal {
-
         if (token.code.length == 0) revert NoToken();
-
         ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-
     }
 
     function _increment(uint256 i) internal pure returns (uint256) {
-
         unchecked { return i + 1; }
-
-    }
-
-    function batch(bytes[] calldata datas) external {
-
-        uint256 n = datas.length;
-
-        for (uint256 i = 0; i < n; i = _increment(i)) {
-
-            (bool success, bytes memory result) = address(this).delegatecall(datas[i]);
-
-            if (!success) {
-
-                revert BatchError(result);
-
-            }
-
-        }
-
     }
 
     modifier onlyMCV2 {

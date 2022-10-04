@@ -40,6 +40,13 @@ contract IncentivesTest is TestSetup {
         
         vm.warp(block.timestamp + duration);
         
+        IERC20[] memory rewardTokens;
+        uint256[] memory rewardAmounts;
+        (rewardTokens, rewardAmounts) = incentivesRewarder.pendingTokens(0, userB, 0);
+        assertEq(rewardAmounts[0], 100);
+        assertEq(address(rewardTokens[0]), address(tokenA));
+
+
         vm.prank(userB);
         masterChef.harvest(0, userB);
         uint256 balanceB = Token(tokenA).balanceOf(address(userB));
@@ -60,6 +67,44 @@ contract IncentivesTest is TestSetup {
     function testFailCreateIncentiveRewardToken(uint32 startTime, uint32 endTime) public {
         _createIncentive(0, zeroAddress, 1, startTime, endTime);
     }
+
+
+    //todo: test_activate_incentive for gas snapshot
+
+
+
+    // Scenario 1
+    // ------------
+    // userA stakes first
+    // userB stakes durtation after start
+    // userA unstakes duration after userB stakes
+    // userC stakes
+    // userA stakes
+    // user B unstakes 1/2
+    // reward period ends
+
+
+    // Scenario 2
+    // --------------
+    // test 3 users staking, period ends and new incentives are spun up 100 blocks later
+    //  - sub test of this could be 1 user activates and 1 doesn't for a certain duration then
+    //    activates certain amount of time later
+
+
+    // Scenario 3
+    // ---------------
+    // test incentive creator updates incentives midway through the period w/ users rewards
+    // still avail to be harvested by users 
+
+    // Scenario 4
+    // ---------------
+    //  Run scenario 1 situation but with multiple incentives for 1 pair, that become
+    //  active at different periods. Probably can fuzz test this as well to cover lots of
+    //  cases
+    //
+
+    // 
+
 
     /*function testUpdateIncentive(
         int112 changeAmount0,

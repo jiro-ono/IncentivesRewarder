@@ -155,7 +155,25 @@ contract TestSetup is DSTestPlus {
         assertEq(updatedIncentive.rewardToken, incentive.rewardToken);
     }
 
+    //todo: test_activate_incentive
 
+    //todo: test_subscribe_incentive
+
+    //todo: test_uncsubscibe_incentive
+
+    //Todo: test_deposit_chef
+
+    //todo: test_withdraw_chef
+
+    //todo: test_harvest_chef
+
+    //todo: test_reward_rate
+
+    //todo: test_pending_tokens?
+
+    //todo: _rewardRate
+
+    //todo: getUsersLiquidityStaked
 
 
 

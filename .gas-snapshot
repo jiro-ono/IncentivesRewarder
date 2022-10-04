@@ -1,2 +1,7 @@
+IncentivesTest:testCreateIncentive(uint256,uint112,uint32,uint32) (runs: 256, μ: 99183, ~: 29862)
+IncentivesTest:testFailCreateIncentiveRewardToken(uint32,uint32) (runs: 256, μ: 12660, ~: 12660)
+IncentivesTest:testIniitialIntegration() (gas: 428774)
+IncentivesTest:testInitialCreateIncentive() (gas: 173977)
+IncentivesTest:testInitialUpdateIncentive() (gas: 193916)
 SampleContractTest:testFunc1() (gas: 534472)
 SampleContractTest:testFunc2() (gas: 534440)
