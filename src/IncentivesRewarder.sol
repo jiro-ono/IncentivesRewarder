@@ -100,6 +100,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     error IncentiveOverflow();
     error NoToken();
     error InvalidIndex();
+    error UserNotStaked();
     error BatchError(bytes innerError);
     error OnlyCreator();
     error AlreadyActivated();
@@ -188,11 +189,10 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         emit IncentiveUpdated(incentiveId, changeAmount, incentive.lastRewardTime, incentive.endTime);
     }
 
-    function subscribeToIncentive(uint256 pid, uint256 incentiveId) external nonReentrant onlyOwner {
+    function subscribeToIncentive(uint256 pid, uint256 incentiveId) external onlyOwner {
         if (incentiveId > incentiveCount || incentiveId <= 0) revert InvalidInput();
+        //todo: add check on pid?? / should we be checking pid in places to make sure there is a pool on masterchef?
         //todo: if already subscribed erorr message
-
-        //
         Incentive storage incentive = incentives[incentiveId];
         
         // updatePool?
@@ -202,7 +202,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
 
     }
 
-    function unsubsribeFromIncentive(uint256 pid, uint256 incentiveIndex) external nonReentrant onlyOwner {
+    function unsubscribeFromIncentive(uint256 pid, uint256 incentiveIndex) external onlyOwner {
         PoolInfo storage pool = poolInfo[pid];
         // updatePool needed?
         if (incentiveIndex >= pool.subscribedIncentiveIds.length) revert InvalidIndex();
@@ -212,6 +212,10 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         }
 
         pool.subscribedIncentiveIds.pop();
+    }
+
+    function getSubscribedIncentives(uint256 pid) public view returns (uint24[] memory) {
+        return poolInfo[pid].subscribedIncentiveIds;
     }
 
     function _accrueRewards(Incentive storage incentive) internal {
@@ -245,9 +249,17 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     function activateIncentive(uint256 incentiveId, address user) public nonReentrant {
         //todo: make sure we double check/test the and that userStakes is correct in action
         uint256 userRewardPerLiquidityLast = rewardPerLiquidityLast[user][incentiveId];
-        if (userRewardPerLiquidityLast != 0) revert AlreadyActivated();
+        if (userRewardPerLiquidityLast != 0) return;
+
+        //todo: might be a hole w/ activateIncentive and it setting user rewardPerLiquidityLast if it's 0
+        //      think we need a check for userStaked > 0, but let's add a test before implementing
+        //      might need to check on 
+
+        // todo: need to think about this one somemore to make sure we cover any holes since it's public
+        //       and above was discovered
 
         Incentive storage incentive = incentives[incentiveId];
+        if (userStakes[incentive.pid][user] == 0) revert UserNotStaked(); 
         rewardPerLiquidityLast[user][incentiveId] = incentive.rewardPerLiquidity;
     }
 
@@ -259,6 +271,9 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         
         // emit event
     }
+
+    //todo: maybe add rewardRate function?? Look into new subgraph tohse if it uses it or how it calculates it for the rewards
+    
 
     function _calculateReward(Incentive storage incentive, uint256 incentiveId, address user, uint256 usersLiquidity) internal view returns (uint256 reward) {
         uint256 userRewardPerLiquidtyLast = rewardPerLiquidityLast[user][incentiveId];

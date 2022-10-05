@@ -16,8 +16,9 @@ interface Vm {
 contract TestSetup is DSTestPlus {
     Vm vm = Vm(HEVM_ADDRESS);
 
-    address userA = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+    address userOwner = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address userB = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+    address userC = 0x158318657de819928C935ae3436Ae2a796bcd681;
     address zeroAddress = 0x0000000000000000000000000000000000000000;
 
     uint256 MAX_UINT256 = type(uint256).max;
@@ -32,11 +33,13 @@ contract TestSetup is DSTestPlus {
     Token tokenC = new Token();
 
     MasterChef masterChef = new MasterChef(sushiToken);
-    IncentivesRewarder incentivesRewarder = new IncentivesRewarder(userA, userA, address(masterChef));
+    IncentivesRewarder incentivesRewarder = new IncentivesRewarder(userOwner, userOwner, address(masterChef));
 
     bytes4 noToken = bytes4(keccak256("NoToken()"));
     bytes4 invalidInput = bytes4(keccak256("InvalidInput()"));
     bytes4 invalidTimeFrame = bytes4(keccak256("InvalidTimeFrame()"));
+    bytes4 invalidIndex = bytes4(keccak256(("InvalidIndex()")));
+    bytes4 userNotStaked = bytes4(keccak256(("UserNotStaked()")));
     bytes4 panic = 0x4e487b71;
     bytes overflow = abi.encodePacked(panic, bytes32(uint256(0x11)));
 
@@ -47,12 +50,12 @@ contract TestSetup is DSTestPlus {
 
         tokenA.approve(address(incentivesRewarder), MAX_UINT256);
 
-        tokenA.transfer(userA, MAX_UINT112);
+        tokenA.transfer(userOwner, MAX_UINT112);
         //tokenA.transfer(userB, MAX_UINT112);
         stakedToken.transfer(address(userB), 100);
         sushiToken.transfer(address(masterChef), MAX_UINT112);
 
-        vm.prank(userA);
+        vm.prank(userOwner);
         tokenA.approve(address(incentivesRewarder), MAX_UINT256);
 
         vm.prank(userB);
@@ -155,27 +158,106 @@ contract TestSetup is DSTestPlus {
         assertEq(updatedIncentive.rewardToken, incentive.rewardToken);
     }
 
-    //todo: test_activate_incentive
+    function _activateIncentive(uint256 incentiveId, address user) public {
+        IncentivesRewarder.Incentive memory incentive = _getIncentive(incentiveId);
+        uint256 pid = incentive.pid;
+        uint256 userRewardPerLiquidityBefore = incentivesRewarder.rewardPerLiquidityLast(user, incentiveId);
 
-    //todo: test_subscribe_incentive
+        if(incentivesRewarder.userStakes(pid, user) == 0) {
+            vm.expectRevert(userNotStaked);
+            incentivesRewarder.activateIncentive(incentiveId, user);
+            return;
+        }
+        
+        incentivesRewarder.activateIncentive(incentiveId, user);
 
-    //todo: test_uncsubscibe_incentive
+        uint256 userRewardPerLiquidityAfter = incentivesRewarder.rewardPerLiquidityLast(user, incentiveId);
 
-    //Todo: test_deposit_chef
+        if (userRewardPerLiquidityBefore != 0 ) {
+            assertEq(userRewardPerLiquidityAfter, userRewardPerLiquidityBefore);
+        } else {
+            assertEq(userRewardPerLiquidityAfter, incentive.rewardPerLiquidity);
+        }
+    }
 
-    //todo: test_withdraw_chef
+    function _subscribeToIncentive(uint256 pid, uint256 incentiveId) public {
+        IncentivesRewarder.Incentive memory incentive = _getIncentive(incentiveId);
+        uint24[] memory incentivesBefore = _getSubscribedIncentives(pid);
 
-    //todo: test_harvest_chef
+        if (incentiveId > incentivesRewarder.incentiveCount() || incentiveId <= 0) {
+            vm.expectRevert(invalidInput);
+            vm.prank(userOwner);
+            incentivesRewarder.subscribeToIncentive(pid, incentiveId);
+            return;
+        }
+
+        vm.prank(userOwner);
+        incentivesRewarder.subscribeToIncentive(pid, incentiveId);
+
+        uint24[] memory incentivesAfter = _getSubscribedIncentives(pid);
+
+        assertEq(incentivesBefore.length + 1, incentivesAfter.length);
+    }
+
+    function _unsubscribeFromIncentive(uint256 pid, uint256 incentiveIndex) public {
+        uint24[] memory incentivesBefore = _getSubscribedIncentives(pid);
+        uint256 incentivesLengthBefore = _getSubscribedIncentivesLength(pid);
+
+        if (incentiveIndex >= _getSubscribedIncentivesLength(pid)) {
+            vm.expectRevert(invalidIndex);
+            vm.prank(userOwner);
+            incentivesRewarder.unsubscribeFromIncentive(pid, incentiveIndex);
+            return;
+        }
+
+        vm.prank(userOwner);
+        incentivesRewarder.unsubscribeFromIncentive(pid, incentiveIndex);
+
+        uint24[] memory incentivesAfter = _getSubscribedIncentives(pid);
+        uint256 incentivesLengthAfter = _getSubscribedIncentivesLength(pid);
+
+        assertEq(incentivesBefore.length - 1, incentivesAfter.length);
+
+        //todo: we should prob add a test in the main tests to check the order after an unsubscribe
+    }
+
+    function _pendingTokens(uint256 pid, address user) public returns (IERC20[] memory, uint256[] memory) {
+        return incentivesRewarder.pendingTokens(pid, user, 0);
+    }
+
+    function _getUsersLiquidityStaked(uint256 pid, address user) public returns (uint256) {
+        uint256 userStaked = incentivesRewarder.userStakes(pid, user);
+        return userStaked;
+    }
+
+    function _depositChef(uint256 pid, uint256 amount, address user) public {
+        vm.prank(user);
+        masterChef.deposit(pid, amount, user);
+
+        //todo: maybe add tests for these deposits and withdraws to make sure amounts are aligned during actual tests
+    }
+
+    function _withdrawChef(uint256 pid, uint256 amount, address user) public {
+        vm.prank(user);
+        masterChef.withdraw(pid, amount, user);
+    }
+
+    function _harvestChef(uint256 pid, address user) public {
+        vm.prank(user);
+        masterChef.harvest(pid, user);
+    }
 
     //todo: test_reward_rate
 
-    //todo: test_pending_tokens?
-
     //todo: _rewardRate
 
-    //todo: getUsersLiquidityStaked
+    function _getSubscribedIncentives(uint256 pid) public returns (uint24[] memory){
+        return incentivesRewarder.getSubscribedIncentives(pid);
+    }
 
-
+    function _getSubscribedIncentivesLength(uint256 pid) public returns (uint256) {
+        return _getSubscribedIncentives(pid).length;
+    }
 
     function _getIncentive(uint256 id) public returns (IncentivesRewarder.Incentive memory incentive) {
         (

@@ -59,7 +59,7 @@ contract MasterChef {
     }
 
     function withdraw(uint256 pid, uint256 amount, address to) public {
-        UserInfo storage user = userInfo[pid][to];
+        UserInfo storage user = userInfo[pid][msg.sender];
 
         user.amount -= amount;
         

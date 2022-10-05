@@ -17,23 +17,25 @@ contract IncentivesTest is TestSetup {
 
     function testIniitialIntegration() public {
         
-        vm.prank(userB);
-        masterChef.deposit(0, 1, userB);
+        _depositChef(0, 1, userB);
         
         uint32 duration = 2592000;
         uint256 ongoingIncentive = _createIncentive(0, address(tokenA), 100, uint32(block.timestamp), uint32(block.timestamp + duration));
         
-        vm.prank(userA);
-        incentivesRewarder.subscribeToIncentive(0, ongoingIncentive);
+        //vm.prank(userOwner);
+        //incentivesRewarder.subscribeToIncentive(0, ongoingIncentive);
+        _subscribeToIncentive(0, ongoingIncentive);
 
-        vm.prank(userB);
-        incentivesRewarder.activateIncentive(1, userB);
+        _activateIncentive(1, userB);
+        _activateIncentive(1, userC);
 
         //vm.warp(block.timestamp + 10);
 
         //incentivesRewarder.activateIncentive(ongoingIncentive, userB);
 
         vm.warp(block.timestamp + 10);
+
+        uint256 userStaked = _getUsersLiquidityStaked(0, userB);
 
         //vm.prank(userB);
         //masterChef.deposit(0, 1, userB);
@@ -42,17 +44,21 @@ contract IncentivesTest is TestSetup {
         
         IERC20[] memory rewardTokens;
         uint256[] memory rewardAmounts;
-        (rewardTokens, rewardAmounts) = incentivesRewarder.pendingTokens(0, userB, 0);
+        (rewardTokens, rewardAmounts) = _pendingTokens(0, userB);
         assertEq(rewardAmounts[0], 100);
         assertEq(address(rewardTokens[0]), address(tokenA));
 
-
-        vm.prank(userB);
-        masterChef.harvest(0, userB);
+        _harvestChef(0, userB);
         uint256 balanceB = Token(tokenA).balanceOf(address(userB));
         
         //console.log(balanceB);
         assertEq(balanceB, 100);
+
+
+        vm.prank(userOwner);
+        _unsubscribeFromIncentive(0, 0);
+
+        _withdrawChef(0, 1, userB);
     }
 
     function testCreateIncentive(
@@ -103,7 +109,12 @@ contract IncentivesTest is TestSetup {
     //  cases
     //
 
-    // 
+    // Scenario 5
+    // ----------------
+    // Need to double test that when an incentive period ends that no one can come in an use
+    // activateIncentive or anything to clean out the rewards
+    // delta should always be 0 for those that come in after incentive ends
+    //
 
 
     /*function testUpdateIncentive(
