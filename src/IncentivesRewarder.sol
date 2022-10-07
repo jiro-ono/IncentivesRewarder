@@ -193,7 +193,6 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         if (incentiveId > incentiveCount || incentiveId <= 0) revert InvalidInput();
         //todo: add check on pid?? / should we be checking pid in places to make sure there is a pool on masterchef?
         //todo: if already subscribed erorr message
-        Incentive storage incentive = incentives[incentiveId];
         
         // updatePool?
 
@@ -204,11 +203,16 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
 
     function unsubscribeFromIncentive(uint256 pid, uint256 incentiveIndex) external onlyOwner {
         PoolInfo storage pool = poolInfo[pid];
-        // updatePool needed?
-        if (incentiveIndex >= pool.subscribedIncentiveIds.length) revert InvalidIndex();
 
-        for (uint256 i = incentiveIndex; i < pool.subscribedIncentiveIds.length - 1; _increment(i)) {
-            pool.subscribedIncentiveIds[i] = pool.subscribedIncentiveIds[i+1];
+        // updatePool needed?
+
+        uint256 subscribedLength = pool.subscribedIncentiveIds.length;
+        if (incentiveIndex >= subscribedLength) revert InvalidIndex();
+
+        if (subscribedLength > 1) {
+            for (uint256 i = incentiveIndex; i < pool.subscribedIncentiveIds.length - 1; _increment(i)) {
+                pool.subscribedIncentiveIds[i] = pool.subscribedIncentiveIds[i+1];
+            }
         }
 
         pool.subscribedIncentiveIds.pop();
@@ -263,17 +267,17 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         rewardPerLiquidityLast[user][incentiveId] = incentive.rewardPerLiquidity;
     }
 
-    function _claimReward(Incentive storage incentive, uint256 incentiveId, address user, uint256 usersLiquidity) internal {
+    function _claimReward(Incentive storage incentive, uint256 incentiveId, address user, address to, uint256 usersLiquidity) internal {
         uint256 reward = _calculateReward(incentive, incentiveId, user, usersLiquidity);
         rewardPerLiquidityLast[user][incentiveId] = incentive.rewardPerLiquidity;
         
-        ERC20(incentive.rewardToken).safeTransfer(user, reward);
+        ERC20(incentive.rewardToken).safeTransfer(to, reward);
         
         // emit event
     }
 
     //todo: maybe add rewardRate function?? Look into new subgraph tohse if it uses it or how it calculates it for the rewards
-    
+
 
     function _calculateReward(Incentive storage incentive, uint256 incentiveId, address user, uint256 usersLiquidity) internal view returns (uint256 reward) {
         uint256 userRewardPerLiquidtyLast = rewardPerLiquidityLast[user][incentiveId];
@@ -295,7 +299,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         for (uint256 i = 0; i < n; i = _increment(i)) {
             Incentive storage incentive = incentives[pool.subscribedIncentiveIds[i]]; // may need to conver this to uint256
             _accrueRewards(incentive);
-            _claimReward(incentive, pool.subscribedIncentiveIds[i], _user, userStake);
+            _claimReward(incentive, pool.subscribedIncentiveIds[i], _user, to, userStake);
         }
 
         userStakes[pid][_user] = lpTokenAmount;
@@ -329,7 +333,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
             uint256 maxTime = block.timestamp < incentive.endTime ? block.timestamp : incentive.endTime;
             uint256 passedTime = maxTime - incentive.lastRewardTime;
             uint256 totalTime = incentive.endTime - incentive.lastRewardTime;
-            uint256 reward = uint256(incentive.rewardRemaining) * passedTime / totalTime;
+            reward = uint256(incentive.rewardRemaining) * passedTime / totalTime;
             rewardPer += reward * type(uint112).max / lpSupply;
         }
 

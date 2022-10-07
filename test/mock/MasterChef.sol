@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import "lib/solmate/src/tokens/ERC20.sol";
-import "../../IncentivesRewarder.sol";
+import "../../src/IncentivesRewarder.sol";
 
 
 contract MasterChef {

@@ -3,17 +3,9 @@ pragma solidity 0.8.15;
 
 import "./TestSetup.sol";
 
-contract IncentivesTest is TestSetup {
+import {console} from "forge-std/console.sol";
 
-    function testInitialCreateIncentive() public {
-        uint256 id = _createIncentive(0, address(tokenA), 100, 2592000, 2593000);
-        assertEq(id, 1);
-    }
-    
-    function testInitialUpdateIncentive() public {
-        uint256 id = _createIncentive(0, address(tokenA), 100, 2592000, 2593000);
-        _updateIncentive(id, 10, 2593000, 2594000);
-    }
+contract IncentivesTest is TestSetup {
 
     function testIniitialIntegration() public {
         
@@ -61,17 +53,61 @@ contract IncentivesTest is TestSetup {
         _withdrawChef(0, 1, userB);
     }
 
-    function testCreateIncentive(
+    function testCreateValidIncentive(
         uint256 pid,
         uint112 amount,
         uint32 startTime,
         uint32 endTime
     ) public {
-        _createIncentive(pid, address(tokenA), amount, startTime, endTime);
+        vm.assume(startTime < endTime && startTime > block.timestamp);
+        vm.assume(startTime > block.timestamp);
+        vm.assume(amount > 0);
+
+        uint256 incentiveId = _createIncentive(pid, address(tokenA), amount, startTime, endTime);
+        assertEq(incentiveId, 1);
     }
 
-    function testFailCreateIncentiveRewardToken(uint32 startTime, uint32 endTime) public {
+    function testFailCreateIncentiveInvalidRewardToken(uint32 startTime, uint32 endTime) public {
         _createIncentive(0, zeroAddress, 1, startTime, endTime);
+    }
+
+    function testCreateAndUpdateValidIncentive(
+        uint112 amount,
+        int112 changeAmount,
+        uint32 startTime,
+        uint32 endTime
+    ) public {
+        vm.assume(startTime < endTime && startTime > block.timestamp);
+        vm.assume(amount > 0);
+
+        uint256 id = _createIncentive(0, address(tokenA), amount, startTime, endTime);
+
+        vm.warp(startTime + 1);
+        _updateIncentive(1, changeAmount, startTime, endTime);
+    }
+
+    function testCreateAndSubscribeValidIncentive(
+         uint256 pid,
+        uint112 amount,
+        uint32 startTime,
+        uint32 endTime
+    ) public {
+        vm.assume(startTime < endTime && startTime > block.timestamp);
+        vm.assume(startTime > block.timestamp);
+        vm.assume(amount > 0);
+        
+        uint256 incentiveId = _createIncentive(pid, address(tokenA), amount, startTime, endTime);
+       
+        vm.prank(userOwner);
+        _subscribeToIncentive(0, incentiveId);
+        uint24[] memory subscribed = incentivesRewarder.getSubscribedIncentives(0);
+        assertEq(subscribed[0], incentiveId);
+
+        vm.warp(startTime + 1);
+        vm.prank(userOwner);
+        _unsubscribeFromIncentive(0, 0);
+        uint24[] memory subscribedAfter = incentivesRewarder.getSubscribedIncentives(0);
+        assertEq(subscribedAfter.length, 0);
     }
 
 

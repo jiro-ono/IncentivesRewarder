@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
-import "../IncentivesRewarder.sol";
+import "../src/IncentivesRewarder.sol";
 import "./mock/Token.sol";
 import "./mock/MasterChef.sol";
 
@@ -11,6 +11,8 @@ interface Vm {
     function warp(uint256) external;
     function expectRevert(bytes memory) external;
     function expectRevert(bytes4) external;
+    function assume(bool) external;
+    function startPrank(address, address) external;
 }
 
 contract TestSetup is DSTestPlus {
