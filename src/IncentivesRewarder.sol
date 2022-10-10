@@ -255,15 +255,14 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         uint256 userRewardPerLiquidityLast = rewardPerLiquidityLast[user][incentiveId];
         if (userRewardPerLiquidityLast != 0) return;
 
-        //todo: might be a hole w/ activateIncentive and it setting user rewardPerLiquidityLast if it's 0
-        //      think we need a check for userStaked > 0, but let's add a test before implementing
-        //      might need to check on 
-
         // todo: need to think about this one somemore to make sure we cover any holes since it's public
         //       and above was discovered
 
+        //todo: probably need a check for if incentiveId is valid, same for rest of
+        //      functions like this
+
         Incentive storage incentive = incentives[incentiveId];
-        if (userStakes[incentive.pid][user] == 0) revert UserNotStaked(); 
+        if (userStakes[incentive.pid][user] == 0) revert UserNotStaked();
         rewardPerLiquidityLast[user][incentiveId] = incentive.rewardPerLiquidity;
     }
 
@@ -338,6 +337,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         }
 
         uint256 userRewardPerLiquidtyLast = rewardPerLiquidityLast[user][incentiveId];
+        if (userRewardPerLiquidtyLast == 0) return 0;
         uint256 rewardPerLiquidityDelta;
         unchecked { rewardPerLiquidityDelta = rewardPer - userRewardPerLiquidtyLast; }
 

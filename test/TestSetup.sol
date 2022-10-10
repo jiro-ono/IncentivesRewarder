@@ -19,8 +19,8 @@ contract TestSetup is DSTestPlus {
     Vm vm = Vm(HEVM_ADDRESS);
 
     address userOwner = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-    address userB = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-    address userC = 0x158318657de819928C935ae3436Ae2a796bcd681;
+    address userA = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+    address userB = 0x158318657de819928C935ae3436Ae2a796bcd681;
     address zeroAddress = 0x0000000000000000000000000000000000000000;
 
     uint256 MAX_UINT256 = type(uint256).max;
@@ -29,10 +29,12 @@ contract TestSetup is DSTestPlus {
     uint112 testIncentiveAmount = 1e21;
 
     Token sushiToken = new Token();
-    Token stakedToken = new Token();
-    Token tokenA = new Token();
-    Token tokenB = new Token();
-    Token tokenC = new Token();
+    Token stakedToken0 = new Token();
+    Token stakedToken1 = new Token();
+    Token stakedToken2 = new Token();
+    Token rewardToken0 = new Token();
+    Token rewardToken1 = new Token();
+    Token rewardToken2 = new Token();
 
     MasterChef masterChef = new MasterChef(sushiToken);
     IncentivesRewarder incentivesRewarder = new IncentivesRewarder(userOwner, userOwner, address(masterChef));
@@ -47,24 +49,40 @@ contract TestSetup is DSTestPlus {
 
     function setUp() public {
         sushiToken.mint(MAX_UINT256);
-        stakedToken.mint(MAX_UINT256);
-        tokenA.mint(MAX_UINT256);
+        stakedToken0.mint(MAX_UINT256);
+        stakedToken1.mint(MAX_UINT256);
+        stakedToken2.mint(MAX_UINT256);
+        rewardToken0.mint(MAX_UINT256);
+        rewardToken1.mint(MAX_UINT256);
+        rewardToken2.mint(MAX_UINT256);
 
-        tokenA.approve(address(incentivesRewarder), MAX_UINT256);
+        rewardToken0.approve(address(incentivesRewarder), MAX_UINT256);
+        rewardToken1.approve(address(incentivesRewarder), MAX_UINT256);
+        rewardToken2.approve(address(incentivesRewarder), MAX_UINT256);
 
-        tokenA.transfer(userOwner, MAX_UINT112);
-        //tokenA.transfer(userB, MAX_UINT112);
-        stakedToken.transfer(address(userB), 100);
+        stakedToken0.transfer(address(userA), 100);
+        stakedToken0.transfer(address(userB), 100);
+        stakedToken1.transfer(address(userA), 100);
+        stakedToken1.transfer(address(userB), 100);
+        stakedToken2.transfer(address(userA), 100);
+        stakedToken2.transfer(address(userB), 100);
         sushiToken.transfer(address(masterChef), MAX_UINT112);
 
-        vm.prank(userOwner);
-        tokenA.approve(address(incentivesRewarder), MAX_UINT256);
+        vm.prank(userA);
+        stakedToken0.approve(address(masterChef), MAX_UINT256);
+        stakedToken1.approve(address(masterChef), MAX_UINT256);
+        stakedToken2.approve(address(masterChef), MAX_UINT256);
 
         vm.prank(userB);
-        stakedToken.approve(address(masterChef), MAX_UINT256);
+        stakedToken0.approve(address(masterChef), MAX_UINT256);
+        stakedToken1.approve(address(masterChef), MAX_UINT256);
+        stakedToken2.approve(address(masterChef), MAX_UINT256);
+
 
         // MasterChef Setup
-        masterChef.add(10, stakedToken, address(incentivesRewarder));
+        masterChef.add(10, stakedToken0, address(incentivesRewarder));
+        masterChef.add(10, stakedToken1, address(incentivesRewarder));
+        masterChef.add(10, stakedToken2, address(incentivesRewarder));
 
         uint112 amount = testIncentiveAmount;
         uint256 currentTime = block.timestamp;
