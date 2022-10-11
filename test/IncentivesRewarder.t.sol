@@ -169,27 +169,117 @@ contract IncentivesTest is TestSetup {
         assertEq(testIncentive.rewardRemaining, 0);
     }
 
+    function testScenario2() public {
+        //create incentive: 1000 rewardToken0 over 50ms starting @ next timestamp for stakedToken0
+        uint256 incentive = _createIncentive(0, address(rewardToken0), 1000, uint32(2), uint32(52));
+        _subscribeToIncentive(0, incentive);
+
+        // userA stakes 10 stakedToken0
+        _depositChef(0, 10, userA);
+
+        // warp to end of incentives
+        vm.warp(52);
+        IERC20[] memory rewardTokensA;
+        uint256[] memory rewardAmountsA;
+        (rewardTokensA, rewardAmountsA) = _pendingTokens(0, userA);
+
+        assertEq(rewardAmountsA[0], 1000);
+
+        // userA harvests the rewards from incentive
+        _harvestChef(0, userA);
+        uint256 balanceA = Token(rewardToken0).balanceOf(address(userA));
+        uint256 balanceRewarder = Token(rewardToken0).balanceOf(address(incentivesRewarder));
+        assertEq(balanceA, 1000);
+        assertEq(balanceRewarder, 0);
+
+        // warp to 18 blocks later, and update last incentive to re-run it again
+        vm.warp(70);
+        _updateIncentive(incentive, 1000, 70, 120);
+
+        IncentivesRewarder.Incentive memory incentiveObj = _getIncentive(incentive);
+        balanceRewarder = Token(rewardToken0).balanceOf(address(incentivesRewarder));
+        assertEq(incentiveObj.rewardRemaining, 1000);
+        assertEq(balanceRewarder, 1000);
+        
+        // warp to end of incentive
+        vm.warp(120);
+        (rewardTokensA, rewardAmountsA) = _pendingTokens(0, userA);
+        assertEq(rewardAmountsA[0], 1000);
+
+        _harvestChef(0, userA);
+        balanceA = Token(rewardToken0).balanceOf(address(userA));
+        balanceRewarder = Token(rewardToken0).balanceOf(address(incentivesRewarder));
+        assertEq(balanceA, 2000);
+        assertEq(balanceRewarder, 0);
+
+    }
+
+    function testScenario3() public {
+        // Incentive runs, user doesn't harvest, then updated incentive runs that's idential
+        // user should be able to harvest 2000 rewardToken0 from both incentive periods
+        //create incentive: 1000 rewardToken0 over 50ms starting @ next timestamp for stakedToken0
+        uint256 incentive = _createIncentive(0, address(rewardToken0), 1000, uint32(2), uint32(52));
+        _subscribeToIncentive(0, incentive);
+
+        // userA stakes 10 stakedToken0
+        _depositChef(0, 10, userA);
+
+        // warp to end of incentives
+        vm.warp(52);
+        IERC20[] memory rewardTokensA;
+        uint256[] memory rewardAmountsA;
+        (rewardTokensA, rewardAmountsA) = _pendingTokens(0, userA);
+        assertEq(rewardAmountsA[0], 1000);
+
+        uint256 balanceA = Token(rewardToken0).balanceOf(address(userA));
+        uint256 balanceRewarder = Token(rewardToken0).balanceOf(address(incentivesRewarder));
+        assertEq(balanceA, 0);
+        assertEq(balanceRewarder, 1000);
+
+        // warp to 18 blocks later, and update last incentive to re-run it again
+        vm.warp(70);
+        _updateIncentive(incentive, 1000, 70, 120);
+
+        IncentivesRewarder.Incentive memory incentiveObj = _getIncentive(incentive);
+        balanceRewarder = Token(rewardToken0).balanceOf(address(incentivesRewarder));
+        assertEq(incentiveObj.rewardRemaining, 2000);
+        assertEq(balanceRewarder, 2000);
+        
+        // warp to end of incentive
+        vm.warp(120);
+        (rewardTokensA, rewardAmountsA) = _pendingTokens(0, userA);
+        assertEq(rewardAmountsA[0], 2000);
+
+        _harvestChef(0, userA);
+        balanceA = Token(rewardToken0).balanceOf(address(userA));
+        balanceRewarder = Token(rewardToken0).balanceOf(address(incentivesRewarder));
+        assertEq(balanceA, 2000);
+        assertEq(balanceRewarder, 0);
+    }
+
 
 
     // Scenario 1
     // ------------
-    // userA stakes first
-    // userB stakes durtation after start
-    // userA unstakes duration after userB stakes
-    // userC stakes
-    // userA stakes
-    // user B unstakes 1/2
-    // reward period ends
-
+    // userA stakes first, is entire pool for half of the incentive duration
+    // userB stakes second, halfway through incentive period
+    // incentive ends and userA get 75% of the rewards, userB get's 25% of the rewards
 
     // Scenario 2
     // --------------
-    // test 3 users staking, period ends and new incentives are spun up 100 blocks later
-    //  - sub test of this could be 1 user activates and 1 doesn't for a certain duration then
-    //    activates certain amount of time later
+    // userA stakes, incentive period runs full duration
+    // userA harvests the rewards at end of incentive
+    // skip couple blocks, then update incentive to run it again for same amount & period
+    // userA harvest the same amount of rewards at end of 2nd iteration of same incentiveId
+    
+
+    // Scenario3
+    // ------------
+    // Same as scenario2, execept userA doesn't harvest in between new incentive periods
+    // Is able to full amount from both icentive periods that ran for the same incentiveId
 
 
-    // Scenario 3
+    // Scenario 4
     // ---------------
     // test incentive creator updates incentives midway through the period w/ users rewards
     // still avail to be harvested by users 

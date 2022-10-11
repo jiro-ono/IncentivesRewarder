@@ -108,7 +108,6 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     event IncentiveCreated(uint256 indexed pid, address indexed rewardToken, address indexed creator, uint256 id, uint256 amount, uint256 startTime, uint256 endTime);
     event IncentiveUpdated(uint256 indexed id, int256 changeAmount, uint256 newStartTime, uint256 newEndTime);
 
-    event TestEvent(uint256 data);
     
     constructor(
         address owner,
@@ -327,7 +326,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     function _pendingToken(Incentive storage incentive, uint256 incentiveId, address user, uint256 usersLiquidity) internal view returns (uint256 reward) {
         uint256 rewardPer = incentive.rewardPerLiquidity;
         uint256 lpSupply = IMasterChefV2(MASTERCHEF_V2).lpToken(incentive.pid).balanceOf(MASTERCHEF_V2);
-        
+
         if (block.timestamp > incentive.lastRewardTime && lpSupply != 0) {
             uint256 maxTime = block.timestamp < incentive.endTime ? block.timestamp : incentive.endTime;
             uint256 passedTime = maxTime - incentive.lastRewardTime;
