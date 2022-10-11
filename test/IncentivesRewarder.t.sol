@@ -210,7 +210,6 @@ contract IncentivesTest is TestSetup {
         balanceRewarder = Token(rewardToken0).balanceOf(address(incentivesRewarder));
         assertEq(balanceA, 2000);
         assertEq(balanceRewarder, 0);
-
     }
 
     function testScenario3() public {
@@ -288,7 +287,6 @@ contract IncentivesTest is TestSetup {
         assertEq(balanceUser1, 500);
         assertEq(balanceRewarder0, 0);
         assertEq(balanceRewarder1, 0);
-
     }
 
 
@@ -312,20 +310,26 @@ contract IncentivesTest is TestSetup {
     // Same as scenario2, execept userA doesn't harvest in between new incentive periods
     // Is able to full amount from both icentive periods that ran for the same incentiveId
 
+    // Scenario4
+    // -----------
+    // Same struct as previous scenarios for beginning
+    // New incentive for same pid comes in halfway before the end of the first incentive
+    // active for user
+    // should receive all rewards from both incentives at end of period 
 
-    // Scenario 4
+    // Scenario 5
     // ---------------
     // test incentive creator updates incentives midway through the period w/ users rewards
     // still avail to be harvested by users 
 
-    // Scenario 4
+    // Scenario 6
     // ---------------
     //  Run scenario 1 situation but with multiple incentives for 1 pair, that become
     //  active at different periods. Probably can fuzz test this as well to cover lots of
     //  cases
     //
 
-    // Scenario 5
+    // Scenario 7
     // ----------------
     // Need to double test that when an incentive period ends that no one can come in an use
     // activateIncentive or anything to clean out the rewards
