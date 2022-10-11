@@ -115,7 +115,6 @@ contract IncentivesTest is TestSetup {
 
 
     function testScenario1() public {
-        //todo: this scenario, if unit is small enough (100 rewardTokens) then there is dust that doesn't get rewarded
         //create incentive: 1000 rewardToken0 over 50ms starting @ next timestamp for stakedToken0
         uint256 incentive = _createIncentive(0, address(rewardToken0), 1000, uint32(2), uint32(52));
         _subscribeToIncentive(0, incentive);
@@ -255,6 +254,41 @@ contract IncentivesTest is TestSetup {
         balanceRewarder = Token(rewardToken0).balanceOf(address(incentivesRewarder));
         assertEq(balanceA, 2000);
         assertEq(balanceRewarder, 0);
+    }
+
+    function testScenario4() public {
+        //create incentive: 1000 rewardToken0 over 50ms starting @ next timestamp for stakedToken0
+        uint256 incentive = _createIncentive(0, address(rewardToken0), 1000, uint32(2), uint32(52));
+        _subscribeToIncentive(0, incentive);
+
+        // userA stakes 10 stakedToken0
+        _depositChef(0, 10, userA);
+
+        // warp 10 blocks ahead of incentive start
+        vm.warp(12);
+        uint256 incentive2 = _createIncentive(0, address(rewardToken1), 500, uint32(12), uint32(52));
+        _subscribeToIncentive(0, incentive2);
+        
+        //activate incentive2 for userA
+        _activateIncentive(incentive2, userA);
+
+        vm.warp(52);
+        IERC20[] memory rewardTokensA;
+        uint256[] memory rewardAmountsA;
+        (rewardTokensA, rewardAmountsA) = _pendingTokens(0, userA);
+        assertEq(rewardAmountsA[0], 1000);
+        assertEq(rewardAmountsA[1], 500);
+
+        _harvestChef(0, userA);
+        uint256 balanceUser0 = Token(rewardToken0).balanceOf(address(userA));
+        uint256 balanceUser1 = Token(rewardToken1).balanceOf(address(userA));
+        uint256 balanceRewarder0 = Token(rewardToken0).balanceOf(address(incentivesRewarder));
+        uint256 balanceRewarder1 = Token(rewardToken1).balanceOf(address(incentivesRewarder));
+        assertEq(balanceUser0, 1000);
+        assertEq(balanceUser1, 500);
+        assertEq(balanceRewarder0, 0);
+        assertEq(balanceRewarder1, 0);
+
     }
 
 

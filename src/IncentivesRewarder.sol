@@ -306,13 +306,13 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     }
 
     function pendingTokens(uint256 _pid, address _user, uint256) public view returns (IERC20[] memory rewardTokens, uint256[] memory rewardAmounts) {
-         IERC20[] memory _rewardTokens = new IERC20[](1);
-         uint256[] memory _rewardAmounts = new uint256[](1);
-
         PoolInfo memory pool = poolInfo[_pid];
         uint256 userStake = userStakes[_pid][_user];
 
         uint256 n = pool.subscribedIncentiveIds.length;
+        IERC20[] memory _rewardTokens = new IERC20[](n);
+        uint256[] memory _rewardAmounts = new uint256[](n);
+
         for (uint256 i = 0; i < n; i = _increment(i)) {
             uint256 incentiveId = pool.subscribedIncentiveIds[i];
             Incentive storage incentive = incentives[incentiveId]; // may need to conver to uint256??
