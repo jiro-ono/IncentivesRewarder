@@ -107,7 +107,9 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
 
     event IncentiveCreated(uint256 indexed pid, address indexed rewardToken, address indexed creator, uint256 id, uint256 amount, uint256 startTime, uint256 endTime);
     event IncentiveUpdated(uint256 indexed id, int256 changeAmount, uint256 newStartTime, uint256 newEndTime);
-
+    event Subscribe(uint256 indexed id, uint256 indexed pid);
+    event Unsubscribe(uint256 indexed id, uint256 indexed pid);
+    event Claim(uint256 indexed id, address indexed user, address rewardToken, uint256 amount);
     
     constructor(
         address owner,
@@ -198,6 +200,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         PoolInfo storage pool = poolInfo[pid];
         pool.subscribedIncentiveIds.push(uint24(incentiveId));
 
+        emit Subscribe(incentiveId, pid);
     }
 
     function unsubscribeFromIncentive(uint256 pid, uint256 incentiveIndex) external onlyOwner {
@@ -208,6 +211,8 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         uint256 subscribedLength = pool.subscribedIncentiveIds.length;
         if (incentiveIndex >= subscribedLength) revert InvalidIndex();
 
+        uint256 incentiveId = pool.subscribedIncentiveIds[incentiveIndex];
+
         if (subscribedLength > 1) {
             for (uint256 i = incentiveIndex; i < pool.subscribedIncentiveIds.length - 1; _increment(i)) {
                 pool.subscribedIncentiveIds[i] = pool.subscribedIncentiveIds[i+1];
@@ -215,6 +220,8 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         }
 
         pool.subscribedIncentiveIds.pop();
+
+        emit Unsubscribe(incentiveId, pid);
     }
 
     function getSubscribedIncentives(uint256 pid) public view returns (uint24[] memory) {
@@ -272,6 +279,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         ERC20(incentive.rewardToken).safeTransfer(to, reward);
         
         // emit event
+        emit Claim(incentiveId, user, incentive.rewardToken, reward);
     }
 
     //todo: maybe add rewardRate function?? Look into new subgraph tohse if it uses it or how it calculates it for the rewards
