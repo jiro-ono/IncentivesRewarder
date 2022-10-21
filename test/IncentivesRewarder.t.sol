@@ -7,6 +7,8 @@ import {console} from "forge-std/console.sol";
 
 contract IncentivesTest is TestSetup {
 
+    //todo: add asserts for expectEmit(bool, bool, bool);
+
     function testIniitialIntegration() public {
         
         _depositChef(0, 1, userA);
@@ -108,6 +110,10 @@ contract IncentivesTest is TestSetup {
         _unsubscribeFromIncentive(0, 0);
         uint24[] memory subscribedAfter = incentivesRewarder.getSubscribedIncentives(0);
         assertEq(subscribedAfter.length, 0);
+    }
+
+    function testActivateIncentive() public {
+        _activateIncentive(presetIncentive1, userB);
     }
 
 
@@ -290,6 +296,7 @@ contract IncentivesTest is TestSetup {
     }
 
 
+    
 
     // Scenario 1
     // ------------

@@ -39,7 +39,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     //todo: look in struct packing for this, pid prob can be moved around
     struct Incentive {
         address creator;            // 1st slot
-        uint256 pid;                // 2nd slot
+        uint256 pid;                // 2nd slot --todo: can probably reduce this smaller uint, and better struct packing
         address rewardToken;        // 3rd slot
         uint256 rewardPerLiquidity; // 3rd slot
         uint32 endTime;             // 3rd slot
@@ -212,9 +212,10 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         if (incentiveIndex >= subscribedLength) revert InvalidIndex();
 
         uint256 incentiveId = pool.subscribedIncentiveIds[incentiveIndex];
+        uint256 n = pool.subscribedIncentiveIds.length;
 
         if (subscribedLength > 1) {
-            for (uint256 i = incentiveIndex; i < pool.subscribedIncentiveIds.length - 1; _increment(i)) {
+            for (uint256 i = incentiveIndex; i < n - 1; _increment(i)) {
                 pool.subscribedIncentiveIds[i] = pool.subscribedIncentiveIds[i+1];
             }
         }
@@ -267,7 +268,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         //todo: probably need a check for if incentiveId is valid, same for rest of
         //      functions like this
 
-        Incentive storage incentive = incentives[incentiveId];
+        Incentive memory incentive = incentives[incentiveId]; //todo: change this to memory
         if (userStakes[incentive.pid][user] == 0) revert UserNotStaked();
         rewardPerLiquidityLast[user][incentiveId] = incentive.rewardPerLiquidity;
     }

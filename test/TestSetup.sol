@@ -39,6 +39,8 @@ contract TestSetup is DSTestPlus {
     MasterChef masterChef = new MasterChef(sushiToken);
     IncentivesRewarder incentivesRewarder = new IncentivesRewarder(userOwner, userOwner, address(masterChef));
 
+    uint256 presetIncentive1;
+
     bytes4 noToken = bytes4(keccak256("NoToken()"));
     bytes4 invalidInput = bytes4(keccak256("InvalidInput()"));
     bytes4 invalidTimeFrame = bytes4(keccak256("InvalidTimeFrame()"));
@@ -88,6 +90,10 @@ contract TestSetup is DSTestPlus {
         uint256 currentTime = block.timestamp;
         uint256 duration = testIncentiveDuration;
 
+        // pre-created incentives, pid 3 is for preset incentives
+        // this to snapshot activate incentives mainly
+        //_depositChef(2, 10, userB);
+       // presetIncentive1 = _createIncentive(2, address(rewardToken2), 10, 1, 1000);
     }
 
     function _createIncentive(
