@@ -56,7 +56,7 @@ contract IncentivesTest is TestSetup {
     }
 
     function testCreateValidIncentive(
-        uint256 pid,
+        uint16 pid,
         uint112 amount,
         uint32 startTime,
         uint32 endTime
@@ -89,7 +89,7 @@ contract IncentivesTest is TestSetup {
     }
 
     function testCreateAndSubscribeValidIncentive(
-         uint256 pid,
+        uint16 pid,
         uint112 amount,
         uint32 startTime,
         uint32 endTime

@@ -97,7 +97,7 @@ contract TestSetup is DSTestPlus {
     }
 
     function _createIncentive(
-        uint256 pid,
+        uint16 pid,
         address rewardToken,
         uint112 amount,
         uint32 startTime,
@@ -206,7 +206,7 @@ contract TestSetup is DSTestPlus {
         }
     }
 
-    function _subscribeToIncentive(uint256 pid, uint256 incentiveId) public {
+    function _subscribeToIncentive(uint16 pid, uint256 incentiveId) public {
         IncentivesRewarder.Incentive memory incentive = _getIncentive(incentiveId);
         uint24[] memory incentivesBefore = _getSubscribedIncentives(pid);
 
@@ -225,7 +225,7 @@ contract TestSetup is DSTestPlus {
         assertEq(incentivesBefore.length + 1, incentivesAfter.length);
     }
 
-    function _unsubscribeFromIncentive(uint256 pid, uint256 incentiveIndex) public {
+    function _unsubscribeFromIncentive(uint16 pid, uint256 incentiveIndex) public {
         uint24[] memory incentivesBefore = _getSubscribedIncentives(pid);
         uint256 incentivesLengthBefore = _getSubscribedIncentivesLength(pid);
 
@@ -251,7 +251,7 @@ contract TestSetup is DSTestPlus {
         return incentivesRewarder.pendingTokens(pid, user, 0);
     }
 
-    function _getUsersLiquidityStaked(uint256 pid, address user) public returns (uint256) {
+    function _getUsersLiquidityStaked(uint16 pid, address user) public returns (uint256) {
         uint256 userStaked = incentivesRewarder.userStakes(pid, user);
         return userStaked;
     }
@@ -277,32 +277,32 @@ contract TestSetup is DSTestPlus {
 
     //todo: _rewardRate
 
-    function _getSubscribedIncentives(uint256 pid) public returns (uint24[] memory){
+    function _getSubscribedIncentives(uint16 pid) public returns (uint24[] memory){
         return incentivesRewarder.getSubscribedIncentives(pid);
     }
 
-    function _getSubscribedIncentivesLength(uint256 pid) public returns (uint256) {
+    function _getSubscribedIncentivesLength(uint16 pid) public returns (uint256) {
         return _getSubscribedIncentives(pid).length;
     }
 
     function _getIncentive(uint256 id) public returns (IncentivesRewarder.Incentive memory incentive) {
         (
             address creator,
-            uint256 pid,
-            address rewardToken,
-            uint256 rewardPerLiquidity,
+            uint16 pid,
             uint32 endTime,
             uint32 lastRewardTime,
-            uint112 rewardRemaining
+            address rewardToken,
+            uint112 rewardRemaining,
+            uint256 rewardPerLiquidity
         ) = incentivesRewarder.incentives(id);
         incentive = IncentivesRewarder.Incentive(
             creator,
             pid,
-            rewardToken,
-            rewardPerLiquidity,
             endTime,
             lastRewardTime,
-            rewardRemaining
+            rewardToken,
+            rewardRemaining,
+            rewardPerLiquidity
         );
     }
 }

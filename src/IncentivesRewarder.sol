@@ -36,15 +36,14 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     using SafeTransferLib for ERC20;
     using PackedUint144 for uint144;
 
-    //todo: look in struct packing for this, pid prob can be moved around
     struct Incentive {
-        address creator;            // 1st slot
-        uint256 pid;                // 2nd slot --todo: can probably reduce this smaller uint, and better struct packing
-        address rewardToken;        // 3rd slot
-        uint256 rewardPerLiquidity; // 3rd slot
-        uint32 endTime;             // 3rd slot
-        uint32 lastRewardTime;      // 4th slot
-        uint112 rewardRemaining;    // 5th slot
+        address creator;            // slot 1: 20/32
+        uint16 pid;                 // slot 1: 22/32 (max pid of 65,535)
+        uint32 endTime;             // slot 1: 26/32
+        uint32 lastRewardTime;      // slot 1: 30/32
+        address rewardToken;        // slot 2: 20/32
+        uint112 rewardRemaining;    // slot 3: 14/32
+        uint256 rewardPerLiquidity; // slot 4: 32/32
     }
 
     // @notice Info of each Rewarder user.
@@ -91,8 +90,8 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
 
     // @dev poolInfo[pid]
     mapping(uint256 => PoolInfo) public poolInfo ;
+    
     //@dev userStakes[pid][user]
-    //todo: do we wanna make userStakes uint112
     mapping(uint256 => mapping(address => uint256)) public userStakes;
 
     error InvalidInput();
@@ -121,7 +120,7 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
     
     // create a new incentive, anyone can create an incentive for a pid
     function createIncentive(
-        uint256 pid,
+        uint16 pid,
         address rewardToken,
         uint112 rewardAmount,
         uint32 startTime,
@@ -142,9 +141,9 @@ contract IncentivesRewarder is IRewarder, ReentrancyGuard, Auth {
         incentives[incentiveId] = Incentive({
             creator: msg.sender,
             pid: pid,
-            rewardToken: rewardToken,
-            lastRewardTime: startTime,
             endTime: endTime,
+            lastRewardTime: startTime,
+            rewardToken: rewardToken,
             rewardRemaining: rewardAmount,
             // Initial value of rewardPerLiquidity can be arbitrarily set to a non-zero value.
             rewardPerLiquidity: type(uint256).max / 2
